@@ -1,20 +1,35 @@
 name: 2 - Test (Integration)
+
 on:
   workflow_call:
     inputs:
-      build-system: {type: string, required: true}
-      java-version: {type: string, required: true}
+      runs-on:      { type: string, required: false, default: 'ubuntu-latest' }
+      build-system: { type: string, required: true }
+      java-version: { type: string, required: true }
+
 jobs:
   it:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
+    # opcional:
+    # timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: ${{ inputs.java-version }}, cache: ${{ inputs.build-system }} }
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java-version }}
+          cache: ${{ inputs.build-system }}
+
       - name: Run integration tests
         run: |
-          if [ "${{ inputs.build-system }}" = "maven" ]; then mvn -B -ntp -DskipITs=false verify;
-          else ./gradlew integrationTest || echo "Define integrationTest task if needed"; fi
+          if [ "${{ inputs.build-system }}" = "maven" ]; then
+            # Asegúrate de tener configurado failsafe para los ITs
+            mvn -B -ntp -DskipITs=false verify
+          else
+            ./gradlew integrationTest || echo "Define integrationTest task if needed"
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: it-test-reports
