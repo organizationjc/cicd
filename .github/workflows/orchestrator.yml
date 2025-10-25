@@ -193,7 +193,8 @@ jobs:
     needs: [static-analysis, sonarcloud, snyk-scan, jfrog-xray, resolve-image-ref]
     uses: ./.github/workflows/4-image-build.yml
     with:
-      dockerfile-path: ${{ inputs.dockerfile-path }}                 # <- evitar env.*
+      runs-on: ${{ inputs.runs-on }}
+      dockerfile-path: ${{ inputs.dockerfile-path }}
       image-name: ${{ inputs.image-name || github.repository }}
 
   image-scan:
