@@ -238,22 +238,22 @@ jobs:
           name: ${{ inputs.project-name }}-artifact
           path: ./artifact
 
-      - name: Deploy via SSH (optional)
-        if: ${{ inputs.use_ssh_deploy == 'true' }}
-        uses: ./.github/actions/tomcat-ssh-deploy
-        with:
-          host: ${{ secrets.TOMCAT_SSH_HOST }}
-          user: ${{ secrets.TOMCAT_SSH_USER }}
-          key: ${{ secrets.TOMCAT_SSH_KEY }}
-          war: ./artifact/${{ inputs.tomcat-artifact-name }}
-          remote_webapps: /opt/tomcat/webapps
+      # - name: Deploy via SSH (optional)
+      #   if: ${{ inputs.use_ssh_deploy == 'true' }}
+      #   uses: ./.github/actions/tomcat-ssh-deploy
+      #   with:
+      #     host: ${{ secrets.TOMCAT_SSH_HOST }}
+      #     user: ${{ secrets.TOMCAT_SSH_USER }}
+      #     key: ${{ secrets.TOMCAT_SSH_KEY }}
+      #     war: ./artifact/${{ inputs.tomcat-artifact-name }}
+      #     remote_webapps: /opt/tomcat/webapps
 
-      - name: Deploy via Tomcat Manager
-        if: ${{ inputs.use_ssh_deploy != 'true' }}
-        run: |
-          curl -u "${{ secrets.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
-            --upload-file "./artifact/${{ inputs.tomcat-artifact-name }}" \
-            "${{ inputs.tomcat-url }}/manager/text/deploy?path=${{ inputs.tomcat-context }}&update=true"
+      # - name: Deploy via Tomcat Manager
+      #   if: ${{ inputs.use_ssh_deploy != 'true' }}
+      #   run: |
+      #     curl -u "${{ secrets.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
+      #       --upload-file "./artifact/${{ inputs.tomcat-artifact-name }}" \
+      #       "${{ inputs.tomcat-url }}/manager/text/deploy?path=${{ inputs.tomcat-context }}&update=true"
 
   # summarize:
   #   needs: [push-image, deploy-tomcat]
