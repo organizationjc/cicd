@@ -1,0 +1,23 @@
+name: 5 - Deploy Tomcat (Manager)
+on:
+  workflow_call:
+    inputs:
+      tomcat_url:        { type: string, required: true } # e.g. https://tomcat.example.com
+      app_context:       { type: string, required: true } # e.g. / or /miapp
+      artifact_name:     { type: string, required: true } # e.g. app.war
+    secrets:
+      TOMCAT_USER:       { required: true }
+      TOMCAT_PASSWORD:   { required: true }
+jobs:
+  deploy:
+    runs-on: ${{ inputs.runs-on || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: .
+      - name: Deploy with Tomcat Manager
+        run: |
+          curl -u "${{ secrets.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
+            --upload-file "${{ inputs.artifact_name }}" \
+            "${{ inputs.tomcat_url }}/manager/text/deploy?path=${{ inputs.app_context }}&update=true"

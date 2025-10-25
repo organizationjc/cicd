@@ -1,0 +1,12 @@
+name: 6 - Release (GitHub)
+on:
+  workflow_call:
+    inputs:
+      project-name: {type: string, required: true}
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release (placeholder)
+        run: echo "gh release create v1.0.0 -t '${{ inputs.project-name }} release'"

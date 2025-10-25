@@ -1,0 +1,31 @@
+name: 4 - Image Push
+on:
+  workflow_call:
+    inputs:
+      image-ref: {type: string, required: true}
+      registry-server: {type: string, required: true}
+      registry-namespace: {type: string, required: true}
+    secrets:
+      REGISTRY_USERNAME: {required: true}
+      REGISTRY_TOKEN: {required: true}
+    outputs:
+      registry-image: {value: ${{ jobs.push.outputs.registry-image }}}
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    outputs:
+      registry-image: ${{ steps.out.outputs.value }}
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry-server }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+      - name: Retag & push
+        run: |
+          TARGET="${{ inputs.registry-server }}/${{ inputs.registry-namespace }}/${{ inputs.image-ref }}"
+          docker tag ${{ inputs.image-ref }} "$TARGET"
+          docker push "$TARGET"
+      - name: Out
+        id: out
+        run: echo "value=${{ inputs.registry-server }}/${{ inputs.registry-namespace }}/${{ inputs.image-ref }}" >> $GITHUB_OUTPUT

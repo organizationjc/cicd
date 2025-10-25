@@ -1,0 +1,14 @@
+name: Caller — java-lib-release
+on: { workflow_dispatch: {} }
+jobs:
+  run:
+    uses: your-org/central-cicd-repo/.github/workflows/orchestrator.yml@v1.0.0
+    with:
+      pipeline_profile: java-lib-release
+      build-system: maven
+      java-version: '17'
+      project-name: 'my-java-library'
+      sonar-project-key: 'org_my-java-library'
+      run-trivy: false
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

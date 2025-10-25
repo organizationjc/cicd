@@ -1,0 +1,271 @@
+name: Orchestrator (Java CI/CD Pro)
+
+on:
+  workflow_call:
+    inputs:
+      pipeline_profile: { type: string, required: true }
+      build-system: { type: string, required: true }
+      java-version: { type: string, required: true, default: '17' }
+      project-name: { type: string, required: true }
+      runs-on: { type: string, default: 'ubuntu-latest' }
+      dockerfile-path: { type: string, default: 'Dockerfile' }
+      image-name: { type: string }
+      registry-server: { type: string, default: 'ghcr.io' }
+      registry-namespace: { type: string }
+      k8s-namespace: { type: string, default: 'default' }
+      helm-chart-path: { type: string }
+      tomcat-url: { type: string, default: '' }
+      tomcat-context: { type: string, default: '/' }
+      tomcat-artifact-name: { type: string, default: 'app.war' }
+      use_ssh_deploy: { type: boolean, default: false }
+      run-owasp-depcheck: { type: boolean, default: true }
+      run-trivy: { type: boolean, default: true }
+      run-sbom: { type: boolean, default: true }
+      sonar-enabled: { type: boolean, default: true }
+      sonar-org: { type: string,  default: '' }
+      sonar-project-key: { type: string, default: '' }
+      snyk-enabled: { type: boolean, default: true }
+      snyk-severity-threshold: { type: string, default: 'high' }
+      jfrog-enabled: { type: boolean, default: true }
+      jfrog-server-url: { type: string, default: '' }
+      jfrog-repo: { type: string, default: '' }
+      jfrog-build-name: { type: string, default: 'java-ci' }
+      jfrog-build-number: { type: string, default: '${{ github.run_number }}' }
+    secrets:
+      SONAR_TOKEN: { required: false }
+      SNYK_TOKEN: { required: false }
+      REGISTRY_USERNAME: { required: false }
+      REGISTRY_TOKEN: { required: false }
+      COSIGN_KEY: { required: false }
+      COSIGN_PASSWORD: { required: false }
+      KUBE_CONFIG: { required: false }
+      OPENSHIFT_TOKEN: { required: false }
+      OPENSHIFT_SERVER: { required: false }
+      TOMCAT_USER: { required: false }
+      TOMCAT_PASSWORD: { required: false }
+      JF_URL: { required: false }
+      JF_USER: { required: false }
+      JF_PASSWORD: { required: false }
+      JF_ACCESS_TOKEN: { required: false }
+
+permissions:
+  contents: read
+  id-token: write
+  packages: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_BASENAME: ${{ inputs.image-name || github.repository }}
+  DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-inputs:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - run: |
+          case "${{ inputs.build-system }}" in maven|gradle) ;; *) echo "build-system inválido"; exit 64;; esac
+          case "${{ inputs.pipeline_profile }}" in             java-service-k8s|java-service-openshift|java-lib-release|java-service-dockerhub|java-service-ghcr|java-war-tomcat) ;;             *) echo "pipeline_profile inválido"; exit 64;; esac
+
+  set-switches:
+    needs: validate-inputs
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      do_image: ${{ steps.sw.outputs.do_image }}
+      do_deploy_k8s: ${{ steps.sw.outputs.do_deploy_k8s }}
+      do_deploy_ocp: ${{ steps.sw.outputs.do_deploy_ocp }}
+      do_deploy_tomcat: ${{ steps.sw.outputs.do_deploy_tomcat }}
+    steps:
+      - id: sw
+        run: |
+          case "${{ inputs.pipeline_profile }}" in
+            java-lib-release)
+              echo "do_image=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_k8s=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_ocp=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_tomcat=false" >> $GITHUB_OUTPUT
+              ;;
+            java-service-k8s|java-service-dockerhub|java-service-ghcr)
+              echo "do_image=true" >> $GITHUB_OUTPUT
+              echo "do_deploy_k8s=true" >> $GITHUB_OUTPUT
+              echo "do_deploy_ocp=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_tomcat=false" >> $GITHUB_OUTPUT
+              ;;
+            java-service-openshift)
+              echo "do_image=true" >> $GITHUB_OUTPUT
+              echo "do_deploy_k8s=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_ocp=true" >> $GITHUB_OUTPUT
+              echo "do_deploy_tomcat=false" >> $GITHUB_OUTPUT
+              ;;
+            java-war-tomcat)
+              echo "do_image=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_k8s=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_ocp=false" >> $GITHUB_OUTPUT
+              echo "do_deploy_tomcat=true" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+  resolve-image-ref:
+    needs: set-switches
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.out.outputs.tag }}
+    steps:
+      - id: out
+        run: echo "tag=${{ env.IMAGE_BASENAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  build:
+    needs: resolve-image-ref
+    uses: ./.github/workflows/1-build-java.yml
+    with:
+      build-system: ${{ inputs.build-system }}
+      java-version: ${{ inputs.java-version }}
+      project-name: ${{ inputs.project-name }}
+
+  unit-tests:
+    needs: build
+    timeout-minutes: 10
+    uses: ./.github/workflows/2-test-unit.yml
+    with:
+      build-system: ${{ inputs.build-system }}
+      java-version: ${{ inputs.java-version }}
+
+  integration-tests:
+    needs: unit-tests
+    timeout-minutes: 20
+    uses: ./.github/workflows/2-test-integration.yml
+    with:
+      build-system: ${{ inputs.build-system }}
+      java-version: ${{ inputs.java-version }}
+
+  static-analysis:
+    needs: integration-tests
+    continue-on-error: true
+    uses: ./.github/workflows/3-static-checks.yml
+    with:
+      build-system: ${{ inputs.build-system }}
+      java-version: ${{ inputs.java-version }}
+
+  sonar:
+    if: ${{ inputs.sonar-project-key != '' }}
+    needs: static-analysis
+    uses: ./.github/workflows/3-sonar-qualitygate.yml
+    with:
+      java-version: ${{ inputs.java-version }}
+      sonar-project-key: ${{ inputs.sonar-project-key }}
+    secrets: inherit
+
+  dep-scan:
+    if: ${{ inputs.run-owasp-depcheck }}
+    needs: static-analysis
+    uses: ./.github/workflows/3-deps-scan-owasp.yml
+    with:
+      build-system: ${{ inputs.build-system }}
+      java-version: ${{ inputs.java-version }}
+
+  sbom:
+    if: ${{ inputs.run-sbom }}
+    needs: static-analysis
+    uses: ./.github/workflows/3-sbom-cyclonedx.yml
+    with:
+      build-system: ${{ inputs.build-system }}
+      java-version: ${{ inputs.java-version }}
+      project-name: ${{ inputs.project-name }}
+
+  image-build:
+    if: ${{ needs.set-switches.outputs.do_image == 'true' }}
+    needs: [static-analysis, sonar, dep-scan, sbom, resolve-image-ref]
+    uses: ./.github/workflows/4-image-build.yml
+    with:
+      dockerfile-path: ${{ env.DOCKERFILE_PATH }}
+      image-name: ${{ env.IMAGE_BASENAME }}
+
+  image-scan:
+    if: ${{ inputs.run-trivy && needs.set-switches.outputs.do_image == 'true' }}
+    needs: image-build
+    uses: ./.github/workflows/3-image-scan-trivy.yml
+    with:
+      image-ref: ${{ needs.image-build.outputs.image-tag }}
+
+  sign-image:
+    if: ${{ needs.set-switches.outputs.do_image == 'true' }}
+    needs: image-scan
+    uses: ./.github/workflows/4-sign-cosign.yml
+    with:
+      image-ref: ${{ needs.image-build.outputs.image-tag }}
+    secrets: inherit
+
+  push-image:
+    if: ${{ needs.set-switches.outputs.do_image == 'true' }}
+    needs: sign-image
+    permissions: { contents: read, packages: write, id-token: write }
+    uses: ./.github/workflows/4-image-push.yml
+    with:
+      image-ref: ${{ needs.image-build.outputs.image-tag }}
+      registry-server: ${{ inputs.registry-server }}
+      registry-namespace: ${{ inputs.registry-namespace }}
+    secrets: inherit
+
+  deploy-k8s:
+    if: ${{ needs.set-switches.outputs.do_deploy_k8s == 'true' }}
+    needs: push-image
+    environment: { name: staging }
+    uses: ./.github/workflows/5-deploy-k8s.yml
+    with:
+      k8s-namespace: ${{ inputs.k8s-namespace }}
+      image-ref: ${{ needs.push-image.outputs.registry-image }}
+    secrets: inherit
+
+  deploy-openshift:
+    if: ${{ needs.set-switches.outputs.do_deploy_ocp == 'true' }}
+    needs: push-image
+    environment: { name: staging }
+    uses: ./.github/workflows/5-deploy-openshift.yml
+    with:
+      image-ref: ${{ needs.push-image.outputs.registry-image }}
+    secrets: inherit
+
+  deploy-tomcat:
+    if: ${{ needs.set-switches.outputs.do_deploy_tomcat == 'true' }}
+    needs: [static-analysis, dep-scan, sbom]
+    name: Deploy to Tomcat
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Download WAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.project-name }}-artifact
+          path: ./artifact
+
+      - name: Deploy via SSH (optional)
+        if: ${{ inputs.use_ssh_deploy == 'true' }}
+        uses: ./.github/actions/tomcat-ssh-deploy
+        with:
+          host: ${{ secrets.TOMCAT_SSH_HOST }}
+          user: ${{ secrets.TOMCAT_SSH_USER }}
+          key: ${{ secrets.TOMCAT_SSH_KEY }}
+          war: ./artifact/${{ inputs.tomcat-artifact-name }}
+          remote_webapps: /opt/tomcat/webapps
+
+      - name: Deploy via Tomcat Manager
+        if: ${{ inputs.use_ssh_deploy != 'true' }}
+        run: |
+          curl -u "${{ secrets.TOMCAT_USER }}:${{ secrets.TOMCAT_PASSWORD }}" \
+            --upload-file "./artifact/${{ inputs.tomcat-artifact-name }}" \
+            "${{ inputs.tomcat-url }}/manager/text/deploy?path=${{ inputs.tomcat-context }}&update=true"
+
+  summarize:
+    needs: [push-image, deploy-k8s, deploy-openshift, deploy-tomcat]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "## Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ needs.push-image.outputs.registry-image || 'n/a' }}\`" >> $GITHUB_STEP_SUMMARY

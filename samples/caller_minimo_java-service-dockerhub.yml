@@ -1,0 +1,17 @@
+name: Caller — java-service-dockerhub
+on: { workflow_dispatch: {} }
+jobs:
+  run:
+    uses: your-org/central-cicd-repo/.github/workflows/orchestrator.yml@v1.0.0
+    with:
+      pipeline_profile: java-service-k8s
+      build-system: maven
+      java-version: '17'
+      project-name: 'my-java-dockerhub'
+      image-name: 'my-java-dockerhub'
+      registry-server: docker.io
+      registry-namespace: myuser
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_USER }}
+      REGISTRY_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}

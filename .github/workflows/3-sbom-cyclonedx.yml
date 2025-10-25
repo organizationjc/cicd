@@ -1,0 +1,23 @@
+name: 3 - SBOM (CycloneDX)
+on:
+  workflow_call:
+    inputs:
+      build-system: {type: string, required: true}
+      java-version: {type: string, required: true}
+      project-name: {type: string, required: true}
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: ${{ inputs.java-version }}, cache: ${{ inputs.build-system }} }
+      - name: Generate SBOM (placeholder)
+        run: echo "Generate CycloneDX SBOM"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.project-name }}-sbom
+          path: |
+            **/target/bom.json
+            **/build/reports/bom.json
+          if-no-files-found: ignore

@@ -1,0 +1,24 @@
+name: Helm Deploy
+description: Helm upgrade --install for a chart
+inputs:
+  chart:
+    required: true
+  namespace:
+    required: true
+  values:
+    required: false
+  set:
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        if ! command -v helm >/dev/null 2>&1; then
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        fi
+        CMD="helm upgrade --install app ${{ inputs.chart }} --namespace ${{ inputs.namespace }}"
+        if [ -n "${{ inputs.values }}" ]; then CMD="$CMD -f ${{ inputs.values }}"; fi
+        if [ -n "${{ inputs.set }}" ]; then CMD="$CMD --set ${{ inputs.set }}"; fi
+        echo "$CMD"
+        $CMD

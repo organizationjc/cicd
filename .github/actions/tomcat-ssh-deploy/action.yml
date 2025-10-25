@@ -1,0 +1,16 @@
+name: Tomcat SSH Deploy
+description: Copy WAR over SSH and restart Tomcat
+inputs:
+  host:   { required: true }
+  user:   { required: true }
+  key:    { required: true, description: "Private key (PEM)" }
+  war:    { required: true }
+  path:   { required: true, description: "Remote webapps path" }
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        echo "${{ inputs.key }}" > key.pem && chmod 600 key.pem
+        scp -i key.pem -o StrictHostKeyChecking=no "${{ inputs.war }}" "${{ inputs.user }}@${{ inputs.host }}:${{ inputs.path }}/ROOT.war"
+        ssh -i key.pem -o StrictHostKeyChecking=no "${{ inputs.user }}@${{ inputs.host }}" "sudo systemctl restart tomcat"

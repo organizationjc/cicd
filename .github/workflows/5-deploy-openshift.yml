@@ -1,0 +1,16 @@
+name: 5 - Deploy OpenShift
+on:
+  workflow_call:
+    inputs:
+      image-ref: {type: string, required: true}
+    secrets:
+      OPENSHIFT_SERVER: {required: true}
+      OPENSHIFT_TOKEN: {required: true}
+jobs:
+  oc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login (placeholder)
+        run: echo "oc login ${{ secrets.OPENSHIFT_SERVER }} --token=${{ secrets.OPENSHIFT_TOKEN }}"
+      - name: Patch image (placeholder)
+        run: echo "oc set image dc/my-app my-app=${{ inputs.image-ref }} -n my-namespace"

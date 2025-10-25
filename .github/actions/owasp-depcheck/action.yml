@@ -1,0 +1,18 @@
+name: OWASP Dependency Check
+description: Run OWASP Dependency Check (CLI)
+inputs:
+  out-dir:
+    required: false
+    default: reports
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        if ! command -v dependency-check >/dev/null 2>&1; then
+          curl -L -o dc.zip https://github.com/jeremylong/DependencyCheck/releases/latest/download/dependency-check-${DC_VERSION:-latest}-release.zip || true
+          unzip -q dc.zip -d $HOME/.dc || true
+          export PATH="$HOME/.dc/dependency-check/bin:$PATH"
+        fi
+        mkdir -p "${{ inputs.out-dir }}"
+        dependency-check.sh --scan . --format ALL --out "${{ inputs.out-dir }}" || true

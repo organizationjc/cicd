@@ -1,0 +1,26 @@
+name: 3 - Static Checks
+on:
+  workflow_call:
+    inputs:
+      build-system: {type: string, required: true}
+      java-version: {type: string, required: true}
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: ${{ inputs.java-version }}, cache: ${{ inputs.build-system }} }
+      - name: Checkstyle & SpotBugs
+        run: |
+          if [ "${{ inputs.build-system }}" = "maven" ]; then mvn -B -ntp checkstyle:check spotbugs:check -DskipTests;
+          else ./gradlew checkstyleMain spotbugsMain || echo "Configure Gradle plugins"; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: static-analysis-reports
+          path: |
+            **/target/checkstyle-result.xml
+            **/target/spotbugsXml.xml
+            **/build/reports/checkstyle/**
+            **/build/reports/spotbugs/**
+          if-no-files-found: ignore

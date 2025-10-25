@@ -1,0 +1,16 @@
+name: 5 - Deploy K8s
+on:
+  workflow_call:
+    inputs:
+      k8s-namespace: {type: string, required: true}
+      image-ref: {type: string, required: true}
+    secrets:
+      KUBE_CONFIG: {required: true}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: kubeconfig
+        run: mkdir -p ~/.kube && echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+      - name: Apply (placeholder)
+        run: echo "kubectl -n ${{ inputs.k8s-namespace }} set image deployment/my-app my-app=${{ inputs.image-ref }}"

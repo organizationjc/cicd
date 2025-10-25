@@ -1,0 +1,14 @@
+name: 4 - Sign Image (Cosign)
+on:
+  workflow_call:
+    inputs:
+      image-ref: {type: string, required: true}
+    secrets:
+      COSIGN_KEY: {required: false}
+      COSIGN_PASSWORD: {required: false}
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cosign (placeholder)
+        run: echo "cosign sign ${{ inputs.image-ref }}"

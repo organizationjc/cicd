@@ -1,0 +1,17 @@
+name: Caller — java-service-ghcr
+on: { workflow_dispatch: {} }
+jobs:
+  run:
+    uses: your-org/central-cicd-repo/.github/workflows/orchestrator.yml@v1.0.0
+    with:
+      pipeline_profile: java-service-k8s
+      build-system: maven
+      java-version: '17'
+      project-name: 'my-java-ghcr'
+      image-name: 'my-java-ghcr'
+      registry-server: ghcr.io
+      registry-namespace: your-org
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.GHCR_USER }}
+      REGISTRY_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}

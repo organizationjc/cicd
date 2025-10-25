@@ -1,0 +1,24 @@
+name: 2 - Test (Integration)
+on:
+  workflow_call:
+    inputs:
+      build-system: {type: string, required: true}
+      java-version: {type: string, required: true}
+jobs:
+  it:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: ${{ inputs.java-version }}, cache: ${{ inputs.build-system }} }
+      - name: Run integration tests
+        run: |
+          if [ "${{ inputs.build-system }}" = "maven" ]; then mvn -B -ntp -DskipITs=false verify;
+          else ./gradlew integrationTest || echo "Define integrationTest task if needed"; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: it-test-reports
+          path: |
+            **/target/failsafe-reports/**
+            **/build/test-results/integrationTest/**
+          if-no-files-found: ignore

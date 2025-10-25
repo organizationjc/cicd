@@ -1,0 +1,17 @@
+name: 5 - Deploy Helm
+on:
+  workflow_call:
+    inputs:
+      chart-path: {type: string, required: true}
+      image-ref: {type: string, required: true}
+      k8s-namespace: {type: string, required: true}
+    secrets:
+      KUBE_CONFIG: {required: true}
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: kubeconfig
+        run: mkdir -p ~/.kube && echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+      - name: Helm upgrade (placeholder)
+        run: echo "helm upgrade --install my-app ${{ inputs.chart-path }} --namespace ${{ inputs.k8s-namespace }} --set image=${{ inputs.image-ref }}"

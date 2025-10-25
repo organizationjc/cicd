@@ -1,0 +1,15 @@
+name: Generate SBOM (CycloneDX)
+description: Generate SBOM via CycloneDX plugins for Maven/Gradle
+inputs:
+  build-system:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        if [ "${{ inputs.build-system }}" = "maven" ]; then
+          mvn -B -ntp org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
+        else
+          ./gradlew cyclonedxBom
+        fi

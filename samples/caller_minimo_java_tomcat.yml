@@ -1,0 +1,54 @@
+name: Application CI/CD — Deploy to Tomcat
+
+on:
+  workflow_dispatch:     # Permite ejecución manual desde la UI
+  push:
+    branches: [ "main" ] # Opcional: automatiza despliegue al hacer push a main
+
+jobs:
+  call-orchestrator:
+    name: Call Central CI/CD Orchestrator (Tomcat)
+    uses: tu-organizacion/central-cicd-repo/.github/workflows/orchestrator.yml@v1.0.0
+
+    permissions:
+      contents: read
+      id-token: write          # Para autenticación OIDC (si se usa cosign o deploy seguro)
+      packages: write          # Para publicar artefactos o imágenes (si aplica)
+      security-events: write   # Para subir resultados de análisis
+
+    with:
+      # --- Perfil principal ---
+      pipeline_profile: java-war-tomcat
+      
+      # --- Infraestructura ---
+      runs-on: ubuntu-latest             # Runner configurable
+      java-version: '17'                 # Versión de Java usada por el build
+      project-name: 'mi-app-tomcat'      # Nombre del proyecto Maven/Gradle
+      build-system: 'maven'              # Puede ser 'maven' o 'gradle'
+
+      # --- Parámetros del despliegue ---
+      tomcat-url: 'https://tomcat.midominio.com'  # URL base del Tomcat Manager
+      tomcat-context: '/miapp'                    # Contexto de despliegue
+      tomcat-artifact-name: 'mi-app-tomcat.war'   # Nombre exacto del WAR
+      use_ssh_deploy: true                       # true => usa tomcat-ssh-deploy (opcional)
+
+      # --- Seguridad / análisis ---
+      enable_trivy_scan: true
+      enable_sbom: true
+      enable_depcheck: true
+
+    secrets:
+      # --- Credenciales Tomcat Manager ---
+      TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
+      TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+
+      # --- (Opcional) para despliegue por SSH ---
+      TOMCAT_SSH_HOST: ${{ secrets.TOMCAT_SSH_HOST }}
+      TOMCAT_SSH_USER: ${{ secrets.TOMCAT_SSH_USER }}
+      TOMCAT_SSH_KEY: ${{ secrets.TOMCAT_SSH_KEY }}
+
+      # --- (Opcional) para escaneo y firma ---
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
+      COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}

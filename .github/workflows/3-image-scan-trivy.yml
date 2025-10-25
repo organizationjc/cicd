@@ -1,0 +1,11 @@
+name: 3 - Image Scan (Trivy)
+on:
+  workflow_call:
+    inputs:
+      image-ref: {type: string, required: true}
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trivy scan (placeholder)
+        run: echo "trivy image --severity CRITICAL,HIGH ${{ inputs.image-ref }}"

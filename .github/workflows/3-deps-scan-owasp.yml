@@ -1,0 +1,20 @@
+name: 3 - Dependency Scan (OWASP)
+on:
+  workflow_call:
+    inputs:
+      build-system: {type: string, required: true}
+      java-version: {type: string, required: true}
+jobs:
+  depcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: ${{ inputs.java-version }}, cache: ${{ inputs.build-system }} }
+      - name: OWASP Dependency Check (placeholder)
+        run: echo "Run OWASP Dependency-Check"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: depcheck-reports
+          path: '**/dependency-check-report.*'
+          if-no-files-found: ignore

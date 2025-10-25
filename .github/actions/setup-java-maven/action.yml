@@ -1,0 +1,14 @@
+name: Setup Java with Maven cache
+description: Configure Temurin JDK and Maven cache
+inputs:
+  java-version:
+    required: true
+    description: Java major version (e.g., 17, 21)
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+        cache: maven

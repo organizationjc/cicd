@@ -1,0 +1,24 @@
+name: Caller — java-service-k8s
+on: { workflow_dispatch: {} }
+jobs:
+  run:
+    uses: your-org/central-cicd-repo/.github/workflows/orchestrator.yml@v1.0.0
+    with:
+      pipeline_profile: java-service-k8s
+      build-system: maven
+      java-version: '17'
+      project-name: 'my-java-service'
+      image-name: 'my-java-service'
+      registry-server: ghcr.io
+      registry-namespace: your-org
+      k8s-namespace: 'staging'
+      helm-chart-path: 'deploy/helm/my-app'
+      sonar-project-key: 'org_my-java-service'
+      run-owasp-depcheck: true
+      run-trivy: true
+      run-sbom: true
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      REGISTRY_USERNAME: ${{ secrets.GHCR_USER }}
+      REGISTRY_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}

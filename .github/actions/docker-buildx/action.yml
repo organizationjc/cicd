@@ -1,0 +1,20 @@
+name: Docker Buildx build
+description: Build Docker image with buildx and load locally
+inputs:
+  context:
+    required: true
+  dockerfile:
+    required: true
+  tags:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: false
+        load: true
+        tags: ${{ inputs.tags }}
