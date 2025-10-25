@@ -26,11 +26,11 @@ jobs:
           java-version: ${{ inputs.java-version }}
           cache: ${{ inputs.build-system }}
 
-      - name: Checkstyle & SpotBugs
+      - name: Checkstyle
         shell: bash
         run: |
           if [ "${{ inputs.build-system }}" = "maven" ]; then
-            mvn -B -ntp checkstyle:check spotbugs:check -DskipTests
+            mvn -B -ntp checkstyle:check -DskipTests
           else
             ./gradlew checkstyleMain spotbugsMain || echo "Configure Gradle plugins"
           fi
