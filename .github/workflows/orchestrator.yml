@@ -136,6 +136,7 @@ jobs:
     with:
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
+      runs-on: ${{ inputs.runs-on }}
 
   integration-tests:
     needs: unit-tests
@@ -144,6 +145,7 @@ jobs:
     with:
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
+      runs-on: ${{ inputs.runs-on }}
 
   static-analysis:
     needs: integration-tests
