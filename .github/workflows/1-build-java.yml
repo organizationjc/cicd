@@ -1,35 +1,68 @@
 name: 1 - Build Java
+
 on:
   workflow_call:
     inputs:
-      build-system: {type: string, required: true}
-      java-version: {type: string, required: true}
-      project-name: {type: string, required: true}
+      runs-on:
+        type: string
+        required: false
+        default: 'ubuntu-latest'
+      build-system:
+        type: string
+        required: true
+      java-version:
+        type: string
+        required: true
+      project-name:
+        type: string
+        required: true
     outputs:
-      jar-file: {value: ${{ jobs.build.outputs.jar-file }}}
+      jar-file:
+        value: ${{ jobs.build.outputs.jar-file }}
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     outputs:
       jar-file: ${{ steps.jar.outputs.name }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: ${{ inputs.java-version }}, cache: ${{ inputs.build-system }} }
-      - name: Build
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java-version }}
+          cache: ${{ inputs.build-system }}
+
+      - name: Build (skip tests)
         run: |
-          if [ "${{ inputs.build-system }}" = "maven" ]; then mvn -B -ntp clean package -DskipTests;
-          else ./gradlew build -x test; fi
-      - name: Get JAR name
+          if [ "${{ inputs.build-system }}" = "maven" ]; then
+            mvn -B -ntp clean package -DskipTests
+          else
+            ./gradlew build -x test
+          fi
+
+      - name: Detect JAR name
         id: jar
+        shell: bash
         run: |
-          NAME=$(ls target/*.jar 2>/dev/null | head -n1 | xargs -n1 basename || true)
-          if [ -z "$NAME" ]; then NAME=$(ls **/build/libs/*.jar | head -n1 | xargs -n1 basename); fi
-          echo "name=$NAME" >> $GITHUB_OUTPUT
-      - uses: actions/upload-artifact@v4
+          NAME=""
+          if compgen -G "target/*.jar" > /dev/null; then
+            NAME=$(ls target/*.jar | head -n1 | xargs -n1 basename)
+          elif compgen -G "**/build/libs/*.jar" > /dev/null; then
+            NAME=$(ls **/build/libs/*.jar | head -n1 | xargs -n1 basename)
+          fi
+          if [ -z "$NAME" ]; then
+            echo "No se encontró JAR generado"; exit 1
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.project-name }}-jar
           path: |
             target/${{ steps.jar.outputs.name }}
             **/build/libs/${{ steps.jar.outputs.name }}
-          if-no-files-found: ignore
+          if-no-files-found: error
+

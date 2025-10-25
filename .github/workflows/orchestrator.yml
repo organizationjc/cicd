@@ -127,6 +127,7 @@ jobs:
     needs: resolve-image-ref
     uses: ./.github/workflows/1-build-java.yml
     with:
+      runs-on: ${{ inputs.runs-on }}
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
       project-name: ${{ inputs.project-name }}
