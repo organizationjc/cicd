@@ -1,20 +1,34 @@
 name: 2 - Test (Unit)
+
 on:
   workflow_call:
     inputs:
-      build-system: {type: string, required: true}
-      java-version: {type: string, required: true}
+      runs-on:        { type: string, required: false, default: 'ubuntu-latest' }
+      build-system:   { type: string, required: true }
+      java-version:   { type: string, required: true }
+
 jobs:
   unit:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
+    # opcional: timeout para este reusable
+    # timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: ${{ inputs.java-version }}, cache: ${{ inputs.build-system }} }
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java-version }}
+          cache: ${{ inputs.build-system }}
+
       - name: Run unit tests
         run: |
-          if [ "${{ inputs.build-system }}" = "maven" ]; then mvn -B -ntp test;
-          else ./gradlew test; fi
+          if [ "${{ inputs.build-system }}" = "maven" ]; then
+            mvn -B -ntp test
+          else
+            ./gradlew test
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: unit-test-reports
@@ -22,3 +36,4 @@ jobs:
             **/target/surefire-reports/**
             **/build/test-results/test/**
           if-no-files-found: ignore
+
