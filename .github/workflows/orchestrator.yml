@@ -149,7 +149,6 @@ jobs:
 
   static-analysis:
     needs: integration-tests
-    continue-on-error: true
     uses: ./.github/workflows/3-static-checks.yml
     with:
       build-system: ${{ inputs.build-system }}
