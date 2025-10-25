@@ -134,18 +134,20 @@ jobs:
     timeout-minutes: 10
     uses: ./.github/workflows/2-test-unit.yml
     with:
+      runs-on: ${{ inputs.runs-on }}
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
-      runs-on: ${{ inputs.runs-on }}
+      
 
   integration-tests:
     needs: unit-tests
     timeout-minutes: 20
     uses: ./.github/workflows/2-test-integration.yml
     with:
+      runs-on: ${{ inputs.runs-on }}
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
-      runs-on: ${{ inputs.runs-on }}
+      
 
   static-analysis:
     needs: integration-tests
