@@ -60,7 +60,6 @@ concurrency:
 
 env:
   IMAGE_BASENAME: ${{ inputs.image-name || github.repository }}
-  DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
 
 defaults:
   run:
@@ -72,7 +71,9 @@ jobs:
     steps:
       - run: |
           case "${{ inputs.build-system }}" in maven|gradle) ;; *) echo "build-system inválido"; exit 64;; esac
-          case "${{ inputs.pipeline_profile }}" in             java-service-k8s|java-service-openshift|java-lib-release|java-service-dockerhub|java-service-ghcr|java-war-tomcat) ;;             *) echo "pipeline_profile inválido"; exit 64;; esac
+          case "${{ inputs.pipeline_profile }}" in \
+            java-service-k8s|java-service-openshift|java-lib-release|java-service-dockerhub|java-service-ghcr|java-war-tomcat) ;; \
+            *) echo "pipeline_profile inválido"; exit 64;; esac
 
   set-switches:
     needs: validate-inputs
@@ -114,13 +115,14 @@ jobs:
 
   resolve-image-ref:
     needs: set-switches
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     outputs:
       image-tag: ${{ steps.out.outputs.tag }}
     steps:
       - id: out
         run: echo "tag=${{ env.IMAGE_BASENAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
+  # ---------- Jobs que llaman reusables (SOLO 'uses' + 'with') ----------
   build:
     needs: resolve-image-ref
     uses: ./.github/workflows/1-build-java.yml
@@ -131,23 +133,19 @@ jobs:
 
   unit-tests:
     needs: build
-    timeout-minutes: 10
     uses: ./.github/workflows/2-test-unit.yml
     with:
       runs-on: ${{ inputs.runs-on }}
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
-      
 
   integration-tests:
     needs: unit-tests
-    timeout-minutes: 20
     uses: ./.github/workflows/2-test-integration.yml
     with:
       runs-on: ${{ inputs.runs-on }}
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
-      
 
   static-analysis:
     needs: integration-tests
@@ -156,7 +154,7 @@ jobs:
     with:
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
-  
+
   sonarcloud:
     if: ${{ inputs.sonar-enabled && inputs.sonar-project-key != '' }}
     needs: static-analysis
@@ -190,39 +188,13 @@ jobs:
       build-number: ${{ inputs.jfrog-build-number }}
     secrets: inherit
 
-  # sonar:
-  #   if: ${{ inputs.sonar-project-key != '' }}
-  #   needs: static-analysis
-  #   uses: ./.github/workflows/3-sonar-qualitygate.yml
-  #   with:
-  #     java-version: ${{ inputs.java-version }}
-  #     sonar-project-key: ${{ inputs.sonar-project-key }}
-  #   secrets: inherit
-
-  dep-scan:
-    if: ${{ inputs.run-owasp-depcheck }}
-    needs: static-analysis
-    uses: ./.github/workflows/3-deps-scan-owasp.yml
-    with:
-      build-system: ${{ inputs.build-system }}
-      java-version: ${{ inputs.java-version }}
-
-  sbom:
-    if: ${{ inputs.run-sbom }}
-    needs: static-analysis
-    uses: ./.github/workflows/3-sbom-cyclonedx.yml
-    with:
-      build-system: ${{ inputs.build-system }}
-      java-version: ${{ inputs.java-version }}
-      project-name: ${{ inputs.project-name }}
-
   image-build:
     if: ${{ needs.set-switches.outputs.do_image == 'true' }}
-    needs: [static-analysis, sonar, dep-scan, sbom, resolve-image-ref]
+    needs: [static-analysis, sonarcloud, snyk-scan, jfrog-xray, resolve-image-ref]
     uses: ./.github/workflows/4-image-build.yml
     with:
-      dockerfile-path: ${{ env.DOCKERFILE_PATH }}
-      image-name: ${{ env.IMAGE_BASENAME }}
+      dockerfile-path: ${{ inputs.dockerfile-path }}                 # <- evitar env.*
+      image-name: ${{ inputs.image-name || github.repository }}
 
   image-scan:
     if: ${{ inputs.run-trivy && needs.set-switches.outputs.do_image == 'true' }}
@@ -250,28 +222,10 @@ jobs:
       registry-namespace: ${{ inputs.registry-namespace }}
     secrets: inherit
 
-  deploy-k8s:
-    if: ${{ needs.set-switches.outputs.do_deploy_k8s == 'true' }}
-    needs: push-image
-    environment: { name: staging }
-    uses: ./.github/workflows/5-deploy-k8s.yml
-    with:
-      k8s-namespace: ${{ inputs.k8s-namespace }}
-      image-ref: ${{ needs.push-image.outputs.registry-image }}
-    secrets: inherit
-
-  deploy-openshift:
-    if: ${{ needs.set-switches.outputs.do_deploy_ocp == 'true' }}
-    needs: push-image
-    environment: { name: staging }
-    uses: ./.github/workflows/5-deploy-openshift.yml
-    with:
-      image-ref: ${{ needs.push-image.outputs.registry-image }}
-    secrets: inherit
-
+  # ---------- Job “normal” para Tomcat (con steps) ----------
   deploy-tomcat:
     if: ${{ needs.set-switches.outputs.do_deploy_tomcat == 'true' }}
-    needs: [static-analysis, dep-scan, sbom]
+    needs: [static-analysis, snyk-scan, jfrog-xray, sonarcloud]
     name: Deploy to Tomcat
     runs-on: ${{ inputs.runs-on }}
     steps:
@@ -299,10 +253,12 @@ jobs:
             "${{ inputs.tomcat-url }}/manager/text/deploy?path=${{ inputs.tomcat-context }}&update=true"
 
   # summarize:
-  #   needs: [push-image, deploy-k8s, deploy-openshift, deploy-tomcat]
+  #   needs: [push-image, deploy-tomcat]
   #   if: always()
-  #   runs-on: ubuntu-latest
+  #   runs-on: ${{ inputs.runs-on }}
   #   steps:
   #     - run: |
   #         echo "## Run Summary" >> $GITHUB_STEP_SUMMARY
-  #         echo "- Image: \`${{ needs.push-image.outputs.registry-image || 'n/a' }}\`" >> $GITHUB_STEP_SUMMARY
+  #         echo "- Sonar: enabled=${{ inputs.sonar-enabled }} org=${{ inputs.sonar-org }} project=${{ inputs.sonar-project-key }}" >> $GITHUB_STEP_SUMMARY
+  #         echo "- Snyk: enabled=${{ inputs.snyk-enabled }} threshold=${{ inputs.snyk-severity-threshold }}" >> $GITHUB_STEP_SUMMARY
+  #         echo "- JFrog: enabled=${{ inputs.jfrog-enabled }} url=${{ inputs.jfrog-server-url }} repo=${{ inputs.jfrog-repo }}" >> $GITHUB_STEP_SUMMARY
