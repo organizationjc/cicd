@@ -48,8 +48,8 @@ jobs:
 
       # JFrog
       jfrog-enabled: false
-      jfrog-server-url: 'https://mi.jfrog.io'
-      jfrog-repo: 'libs-release-local'
+      jfrog-server-url: 'https://trialxqic1u.jfrog.io'
+      jfrog-repo: 'test-jfrog-docker-docker'
       jfrog-build-name: 'mi-app-tomcat'
       jfrog-build-number: '${{ github.run_number }}'
 
@@ -68,7 +68,7 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       # COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
       # COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-      JF_URL: ${{ secrets.JF_URL }}                 # opcional si no pasas por inputs
-      JF_USER: ${{ secrets.JF_USER }}
-      JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
+      # JF_URL: ${{ secrets.JF_URL }}                 # opcional si no pasas por inputs
+      # JF_USER: ${{ secrets.JF_USER }}
+      # JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
       JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }} # alternativa moderna
