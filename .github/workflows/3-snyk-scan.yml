@@ -1,0 +1,33 @@
+name: 3 - Snyk Scan
+on:
+  workflow_call:
+    inputs:
+      runs-on: { type: string, default: 'ubuntu-latest' }
+      build-system: { type: string, required: true }
+      severity-threshold: { type: string, default: "high" } # low|medium|high|critical
+    secrets:
+      SNYK_TOKEN: { required: true }
+jobs:
+  snyk:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Java build tool cache (optional)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: ${{ inputs.build-system }}
+      - name: Build (no tests)
+        run: |
+          if [ "${{ inputs.build-system }}" = "maven" ]; then mvn -B -ntp -DskipTests package;
+          else ./gradlew assemble; fi
+      - name: Snyk Open Source & Code
+        uses: snyk/actions/maven@master # o snyk/actions/gradle@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: >
+            --severity-threshold=${{ inputs.severity-threshold }}
+            --all-projects

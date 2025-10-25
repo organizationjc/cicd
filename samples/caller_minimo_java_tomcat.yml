@@ -33,14 +33,30 @@ jobs:
       use_ssh_deploy: true                       # true => usa tomcat-ssh-deploy (opcional)
 
       # --- Seguridad / análisis ---
-      enable_trivy_scan: true
-      enable_sbom: true
-      enable_depcheck: true
+      enable_trivy_scan: false
+      enable_sbom: false
+      enable_depcheck: false
+
+      # SonarCloud
+      sonar-enabled: false
+      sonar-org: 'mi-org-sonar'
+      sonar-project-key: 'mi-app-tomcat'
+
+      # Snyk
+      snyk-enabled: false
+      snyk-severity-threshold: high
+
+      # JFrog
+      jfrog-enabled: false
+      jfrog-server-url: 'https://mi.jfrog.io'
+      jfrog-repo: 'libs-release-local'
+      jfrog-build-name: 'mi-app-tomcat'
+      jfrog-build-number: '${{ github.run_number }}'
 
     secrets:
       # --- Credenciales Tomcat Manager ---
-      TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
-      TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
+      # TOMCAT_USER: ${{ secrets.TOMCAT_USER }}
+      # TOMCAT_PASSWORD: ${{ secrets.TOMCAT_PASSWORD }}
 
       # --- (Opcional) para despliegue por SSH ---
       TOMCAT_SSH_HOST: ${{ secrets.TOMCAT_SSH_HOST }}
@@ -50,5 +66,9 @@ jobs:
       # --- (Opcional) para escaneo y firma ---
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
-      COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+      # COSIGN_KEY: ${{ secrets.COSIGN_KEY }}
+      # COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+      JF_URL: ${{ secrets.JF_URL }}                 # opcional si no pasas por inputs
+      JF_USER: ${{ secrets.JF_USER }}
+      JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
+      JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }} # alternativa moderna

@@ -1,0 +1,36 @@
+name: 3 - JFrog Xray
+on:
+  workflow_call:
+    inputs:
+      runs-on: { type: string, default: 'ubuntu-latest' }
+      jfrog-server-url: { type: string, required: true }
+      jfrog-repo: { type: string, required: true }
+      build-name: { type: string, required: true }
+      build-number: { type: string, required: true }
+    secrets:
+      JF_URL: { required: false }
+      JF_USER: { required: false }
+      JF_PASSWORD: { required: false }
+      JF_ACCESS_TOKEN: { required: false }
+jobs:
+  xray:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ secrets.JF_URL || inputs.jfrog-server-url }}
+          JF_USER: ${{ secrets.JF_USER }}
+          JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      - name: Collect build info
+        run: |
+          jf rt ping
+          jf rt mvn "clean package -DskipTests" --build-name="${{ inputs.build-name }}" --build-number="${{ inputs.build-number }}"
+      - name: Xray Scan (fail on high/critical)
+        run: |
+          jf xr bce ${{ inputs.build-name }} ${{ inputs.build-number }} --vuln --fail=true
+      # (Opcional) publicar artefactos en Artifactory:
+      - name: Publish artifact
+        run: jf rt u "target/*.jar" "${{ inputs.jfrog-repo }}/" --build-name="${{ inputs.build-name }}" --build-number="${{ inputs.build-number }}"

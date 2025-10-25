@@ -152,15 +152,48 @@ jobs:
     with:
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
-
-  sonar:
-    if: ${{ inputs.sonar-project-key != '' }}
+  
+  sonarcloud:
+    if: ${{ inputs.sonar-enabled && inputs.sonar-project-key != '' }}
     needs: static-analysis
-    uses: ./.github/workflows/3-sonar-qualitygate.yml
+    uses: ./.github/workflows/3-sonarcloud.yml
     with:
+      runs-on: ${{ inputs.runs-on }}
       java-version: ${{ inputs.java-version }}
+      sonar-org: ${{ inputs.sonar-org }}
       sonar-project-key: ${{ inputs.sonar-project-key }}
     secrets: inherit
+
+  snyk-scan:
+    if: ${{ inputs.snyk-enabled }}
+    needs: static-analysis
+    uses: ./.github/workflows/3-snyk-scan.yml
+    with:
+      runs-on: ${{ inputs.runs-on }}
+      build-system: ${{ inputs.build-system }}
+      severity-threshold: ${{ inputs.snyk-severity-threshold }}
+    secrets: inherit
+
+  jfrog-xray:
+    if: ${{ inputs.jfrog-enabled && inputs.jfrog-server-url != '' }}
+    needs: static-analysis
+    uses: ./.github/workflows/3-jfrog-xray.yml
+    with:
+      runs-on: ${{ inputs.runs-on }}
+      jfrog-server-url: ${{ inputs.jfrog-server-url }}
+      jfrog-repo: ${{ inputs.jfrog-repo }}
+      build-name: ${{ inputs.jfrog-build-name }}
+      build-number: ${{ inputs.jfrog-build-number }}
+    secrets: inherit
+
+  # sonar:
+  #   if: ${{ inputs.sonar-project-key != '' }}
+  #   needs: static-analysis
+  #   uses: ./.github/workflows/3-sonar-qualitygate.yml
+  #   with:
+  #     java-version: ${{ inputs.java-version }}
+  #     sonar-project-key: ${{ inputs.sonar-project-key }}
+  #   secrets: inherit
 
   dep-scan:
     if: ${{ inputs.run-owasp-depcheck }}
@@ -261,11 +294,11 @@ jobs:
             --upload-file "./artifact/${{ inputs.tomcat-artifact-name }}" \
             "${{ inputs.tomcat-url }}/manager/text/deploy?path=${{ inputs.tomcat-context }}&update=true"
 
-  summarize:
-    needs: [push-image, deploy-k8s, deploy-openshift, deploy-tomcat]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "## Run Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Image: \`${{ needs.push-image.outputs.registry-image || 'n/a' }}\`" >> $GITHUB_STEP_SUMMARY
+  # summarize:
+  #   needs: [push-image, deploy-k8s, deploy-openshift, deploy-tomcat]
+  #   if: always()
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: |
+  #         echo "## Run Summary" >> $GITHUB_STEP_SUMMARY
+  #         echo "- Image: \`${{ needs.push-image.outputs.registry-image || 'n/a' }}\`" >> $GITHUB_STEP_SUMMARY
