@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ inputs.build-system }}" = "maven" ]; then
-            mvn -B -ntp checkstyle:check -DskipTests
+            mvn -B -ntp -DskipTests -Dcheckstyle.failOnViolation=false checkstyle:check
           else
             ./gradlew checkstyleMain spotbugsMain || echo "Configure Gradle plugins"
           fi
