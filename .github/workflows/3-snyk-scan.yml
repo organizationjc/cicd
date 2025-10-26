@@ -39,7 +39,7 @@ jobs:
       # ─────────────────────────────────────────────────────────────
       - name: Snyk (Maven + Docker action JDK 17)
         if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' && inputs.jdk-major == '17' }}
-        uses: snyk/actions/maven-3-jdk-17@v3
+        uses: snyk/actions/maven-3-jdk-17@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -55,7 +55,7 @@ jobs:
       # ─────────────────────────────────────────────────────────────
       - name: Snyk (Maven + Docker action JDK 11)
         if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' && inputs.jdk-major == '11' }}
-        uses: snyk/actions/maven-3-jdk-11@v3
+        uses: snyk/actions/maven-3-jdk-11@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -79,7 +79,7 @@ jobs:
 
       - name: Snyk CLI setup
         if: ${{ !inputs.use-docker-action }}
-        uses: snyk/actions/setup@v4
+        uses: snyk/actions/setup@master
 
       - name: Snyk test (CLI)
         if: ${{ !inputs.use-docker-action }}
