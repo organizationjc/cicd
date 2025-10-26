@@ -241,7 +241,7 @@ jobs:
   deploy-tomcat:
     if: ${{ needs.set-switches.outputs.do_deploy_tomcat == 'true' }}
     #needs: [static-analysis, snyk-scan, sonarcloud]
-    needs: [image-build]
+    needs: [static-analysis]
     uses: ./.github/workflows/5-deploy-tomcat-ssh.yml
     with:
       runner-label: ${{ inputs.runner-label }}
