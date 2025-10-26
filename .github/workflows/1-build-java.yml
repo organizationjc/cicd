@@ -95,9 +95,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.project-name }}-jar
-          path: |
-            target/${{ steps.detect.outputs.jar-name }}
-            **/build/libs/${{ steps.detect.outputs.jar-name }}
+          path: target/*.jar
           if-no-files-found: error
 
       - name: Upload WAR artifact
@@ -105,9 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.project-name }}-war
-          path: |
-            target/${{ steps.detect.outputs.war-name }}
-            **/build/libs/${{ steps.detect.outputs.war-name }}
+          path: target/*.war
           if-no-files-found: error
 
       # Opcional: subir binarios .class para que otras etapas (p.ej. Sonar) no tengan que recompilar
