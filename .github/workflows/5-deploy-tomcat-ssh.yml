@@ -3,7 +3,7 @@ name: Reusable Tomcat SSH Deploy
 on:
   workflow_call:
     inputs:
-      runner-label:
+      runs-on:
         type: string
         required: true
       tomcat-artifact-name:
@@ -33,7 +33,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ${{ inputs.runner-label }}
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - name: 1. Download built WAR artifact
         uses: actions/download-artifact@v4

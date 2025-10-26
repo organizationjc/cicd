@@ -244,7 +244,7 @@ jobs:
     needs: [static-analysis]
     uses: ./.github/workflows/5-deploy-tomcat-ssh.yml
     with:
-      runner-label: ${{ inputs.runner-label }}
+      runs-on: ${{ inputs.runs-on }}
       tomcat-artifact-name: myapp-war
       tomcat-webapps-path: /opt/tomcat/webapps
       target-war-name: app.war
