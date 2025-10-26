@@ -1,0 +1,21 @@
+# This Composite Action configures an SSH private key for use with scp/ssh.
+name: 'Setup SSH Private Key'
+description: 'Writes an SSH private key from a secret to a file'
+
+inputs:
+  ssh-private-key:
+    description: 'The SSH private key (passed as a secret)'
+    required: true
+  key-filename:
+    description: 'The local filename for the key'
+    required: false
+    default: 'private_key.pem'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure SSH key
+      shell: bash
+      run: |
+        echo "${{ inputs.ssh-private-key }}" > ${{ inputs.key-filename }}
+        chmod 600 ${{ inputs.key-filename }}

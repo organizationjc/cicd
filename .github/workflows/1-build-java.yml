@@ -19,12 +19,15 @@ on:
     outputs:
       jar-file:
         value: ${{ jobs.build.outputs.jar-file }}
+      war-file:
+        value: ${{ jobs.build.outputs.war-file }}
 
 jobs:
   build:
     runs-on: ${{ inputs.runs-on }}
     outputs:
-      jar-file: ${{ steps.jar.outputs.name }}
+      jar-file: ${{ steps.detect.outputs.jar-name }}
+      war-file: ${{ steps.detect.outputs.war-name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -38,36 +41,73 @@ jobs:
         shell: bash
         run: |
           if [ "${{ inputs.build-system }}" = "maven" ]; then
-            # Compila y empaca sin tests
             mvn -B -ntp clean package -DskipTests
           else
             ./gradlew clean build -x test
           fi
 
-      - name: Detect JAR name
-        id: jar
+      - name: Detect build artifacts (JAR/WAR)
+        id: detect
         shell: bash
         run: |
-          NAME=""
-          # Maven primero
-          if compgen -G "target/*.jar" > /dev/null; then
-            NAME=$(ls -1 target/*.jar | head -n1 | xargs -n1 basename)
-          # Gradle (multi-módulo incluido)
-          elif compgen -G "**/build/libs/*.jar" > /dev/null; then
-            NAME=$(ls -1 **/build/libs/*.jar | head -n1 | xargs -n1 basename)
+          set -euo pipefail
+          shopt -s globstar nullglob
+
+          # Recolecta candidatos
+          mapfile -t JAR_CANDS < <(printf '%s\0' target/*.jar **/build/libs/*.jar | xargs -0 -I{} echo {})
+          mapfile -t WAR_CANDS < <(printf '%s\0' target/*.war **/build/libs/*.war | xargs -0 -I{} echo {})
+
+          pick_preferred() {
+            local kind="$1"; shift
+            local -a arr=("$@")
+            local preferred=""
+            # 1) Preferir Spring Boot (boot/ spring-boot) si existe
+            for f in "${arr[@]}"; do
+              [[ "$f" =~ /boot[^/]*\.$kind$ || "$f" =~ /spring-boot[^/]*\.$kind$ ]] && { preferred="$f"; break; }
+            done
+            # 2) Si no, primero de la lista
+            [[ -z "$preferred" && ${#arr[@]} -gt 0 ]] && preferred="${arr[0]}"
+            echo "$preferred"
+          }
+
+          JAR_FILE="$(pick_preferred jar "${JAR_CANDS[@]-}")"
+          WAR_FILE="$(pick_preferred war "${WAR_CANDS[@]-}")"
+
+          # Exponer nombres (solo si existen)
+          if [[ -n "${JAR_FILE:-}" ]]; then
+            echo "jar-name=$(basename "$JAR_FILE")" >> "$GITHUB_OUTPUT"
+          else
+            echo "jar-name=" >> "$GITHUB_OUTPUT"
           fi
-          if [ -z "$NAME" ]; then
-            echo "No se encontró JAR generado"; exit 1
+
+          if [[ -n "${WAR_FILE:-}" ]]; then
+            echo "war-name=$(basename "$WAR_FILE")" >> "$GITHUB_OUTPUT"
+          else
+            echo "war-name=" >> "$GITHUB_OUTPUT"
           fi
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+          # Un pequeño log útil
+          echo "JAR: ${JAR_FILE:-<none>}"
+          echo "WAR: ${WAR_FILE:-<none>}"
 
       - name: Upload JAR artifact
+        if: ${{ steps.detect.outputs.jar-name != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.project-name }}-jar
           path: |
-            target/${{ steps.jar.outputs.name }}
-            **/build/libs/${{ steps.jar.outputs.name }}
+            target/${{ steps.detect.outputs.jar-name }}
+            **/build/libs/${{ steps.detect.outputs.jar-name }}
+          if-no-files-found: error
+
+      - name: Upload WAR artifact
+        if: ${{ steps.detect.outputs.war-name != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.project-name }}-war
+          path: |
+            target/${{ steps.detect.outputs.war-name }}
+            **/build/libs/${{ steps.detect.outputs.war-name }}
           if-no-files-found: error
 
       # Opcional: subir binarios .class para que otras etapas (p.ej. Sonar) no tengan que recompilar
@@ -81,3 +121,4 @@ jobs:
             build/classes/java/main/**
             **/build/classes/java/main/**
           if-no-files-found: ignore
+

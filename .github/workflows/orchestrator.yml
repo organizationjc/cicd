@@ -42,8 +42,9 @@ on:
       KUBE_CONFIG: { required: false }
       OPENSHIFT_TOKEN: { required: false }
       OPENSHIFT_SERVER: { required: false }
-      TOMCAT_USER: { required: false }
-      TOMCAT_PASSWORD: { required: false }
+      TOMCAT_SSH_HOST: { required: false }
+      TOMCAT_SSH_USER: { required: false }
+      TOMCAT_SSH_KEY: { required: false }
       JF_URL: { required: false }
       JF_USER: { required: false }
       JF_PASSWORD: { required: false }
@@ -238,15 +239,19 @@ jobs:
   # ---------- Job “normal” para Tomcat (con steps) ----------
   deploy-tomcat:
     if: ${{ needs.set-switches.outputs.do_deploy_tomcat == 'true' }}
-    needs: [static-analysis, snyk-scan, jfrog-xray, sonarcloud]
-    name: Deploy to Tomcat
-    runs-on: ${{ inputs.runs-on }}
-    steps:
-      - name: Download WAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.project-name }}-artifact
-          path: ./artifact
+    needs: [static-analysis, snyk-scan, sonarcloud]
+    uses: ./.github/workflows/5-deploy-tomcat-ssh.yml
+    with:
+      runner-label: ${{ inputs.runner-label }}
+      tomcat-artifact-name: myapp-war
+      tomcat-webapps-path: /opt/tomcat/webapps
+      target-war-name: app.war
+      tomcat-service-name: tomcat
+    secrets:
+      # Mapping: <child_secret> : <secret_received_by_orchestrator>
+      TOMCAT_SSH_HOST: ${{ secrets.TOMCAT_SSH_HOST }}
+      TOMCAT_SSH_USER: ${{ secrets.TOMCAT_SSH_USER }}
+      TOMCAT_SSH_KEY: ${{ secrets.TOMCAT_SSH_KEY }}
 
       # - name: Deploy via SSH (optional)
       #   if: ${{ inputs.use_ssh_deploy == 'true' }}
