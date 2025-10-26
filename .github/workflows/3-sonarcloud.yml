@@ -7,6 +7,9 @@ on:
         type: string
         required: false
         default: 'ubuntu-latest'
+      build-system:
+        type: string
+        required: true            # 'maven' o 'gradle'
       java-version:
         type: string
         required: true
@@ -16,6 +19,21 @@ on:
       sonar-project-key:
         type: string
         required: true
+      use-binaries-artifact:
+        type: boolean
+        default: true             # true = intenta usar artifact 'java-binaries'
+      binaries-artifact-name:
+        type: string
+        default: 'java-binaries'  # nombre del artifact con .class
+      wait-for-quality-gate:
+        type: boolean
+        default: false
+      coverage-report-paths:
+        type: string
+        default: ''               # ej: '**/target/site/jacoco/*.xml,**/build/reports/jacoco/test/jacocoTestReport.xml'
+      extra-args:
+        type: string
+        default: ''               # args adicionales para sonar (-Dsonar.exclusions=... etc.)
     secrets:
       SONAR_TOKEN:
         required: true
@@ -30,7 +48,61 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ inputs.java-version }}
+          cache: ${{ inputs.build-system }}
 
+      # 1) (Opcional) Descargar binarios .class previamente generados
+      - name: Download Java binaries artifact
+        if: ${{ inputs.use-binaries-artifact }}
+        id: dl_bins
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.binaries-artifact-name }}
+          path: ./binaries
+
+      # 2) Si no hay artifact o no se usa, compilar para generar .class
+      - name: Compile to generate .class (fallback)
+        if: ${{ !inputs.use-binaries-artifact }}
+        run: |
+          if [ "${{ inputs.build-system }}" = "maven" ]; then
+            mvn -B -ntp -DskipTests clean compile
+          else
+            ./gradlew clean classes
+          fi
+
+      # 3) Resolver ruta de binarios para sonar.java.binaries
+      - name: Resolve binaries path
+        id: bins
+        shell: bash
+        run: |
+          BINS=""
+          # Prioriza artifact descargado
+          if [ -d "./binaries" ] && compgen -G "./binaries/**/*.class" > /dev/null; then
+            BINS="./binaries"
+          else
+            # Maven/Gradle convenciones
+            if [ -d "target/classes" ]; then
+              BINS="target/classes"
+            elif [ -d "build/classes/java/main" ]; then
+              BINS="build/classes/java/main"
+            fi
+            # Multi-módulo (patrones)
+            if ls -d */target/classes >/dev/null 2>&1; then
+              BINS="${BINS:+$BINS,}**/target/classes"
+            fi
+            if ls -d */build/classes/java/main >/dev/null 2>&1; then
+              BINS="${BINS:+$BINS,}**/build/classes/java/main"
+            fi
+          fi
+
+          if [ -z "$BINS" ]; then
+            echo "No se encontraron binarios .class. Considera compilar o usar el artifact 'java-binaries'." >&2
+            exit 1
+          fi
+
+          echo "path=$BINS" >> "$GITHUB_OUTPUT"
+          echo "Usando sonar.java.binaries=$BINS"
+
+      # 4) Ejecutar SonarCloud
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
@@ -39,9 +111,13 @@ jobs:
           args: >
             -Dsonar.organization=${{ inputs.sonar-org }}
             -Dsonar.projectKey=${{ inputs.sonar-project-key }}
+            -Dsonar.java.binaries=${{ steps.bins.outputs.path }}
+            ${{ inputs.coverage-report-paths != '' && format('-Dsonar.coverage.jacoco.xmlReportPaths={0}', inputs.coverage-report-paths) || '' }}
+            ${{ inputs.extra-args }}
 
-      # Si quieres bloquear por Quality Gate, descomenta este bloque:
+      # 5) (Opcional) Quality Gate
       # - name: Quality Gate (wait)
+      #   if: ${{ inputs.wait-for-quality-gate }}
       #   uses: SonarSource/sonarcloud-github-action@v2
       #   with:
       #     waitForQualityGate: true

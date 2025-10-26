@@ -35,11 +35,13 @@ jobs:
           cache: ${{ inputs.build-system }}
 
       - name: Build (skip tests)
+        shell: bash
         run: |
           if [ "${{ inputs.build-system }}" = "maven" ]; then
+            # Compila y empaca sin tests
             mvn -B -ntp clean package -DskipTests
           else
-            ./gradlew build -x test
+            ./gradlew clean build -x test
           fi
 
       - name: Detect JAR name
@@ -47,10 +49,12 @@ jobs:
         shell: bash
         run: |
           NAME=""
+          # Maven primero
           if compgen -G "target/*.jar" > /dev/null; then
-            NAME=$(ls target/*.jar | head -n1 | xargs -n1 basename)
+            NAME=$(ls -1 target/*.jar | head -n1 | xargs -n1 basename)
+          # Gradle (multi-módulo incluido)
           elif compgen -G "**/build/libs/*.jar" > /dev/null; then
-            NAME=$(ls **/build/libs/*.jar | head -n1 | xargs -n1 basename)
+            NAME=$(ls -1 **/build/libs/*.jar | head -n1 | xargs -n1 basename)
           fi
           if [ -z "$NAME" ]; then
             echo "No se encontró JAR generado"; exit 1
@@ -66,3 +70,14 @@ jobs:
             **/build/libs/${{ steps.jar.outputs.name }}
           if-no-files-found: error
 
+      # Opcional: subir binarios .class para que otras etapas (p.ej. Sonar) no tengan que recompilar
+      - name: Upload Java binaries (classes)
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-binaries
+          path: |
+            target/classes/**
+            **/target/classes/**
+            build/classes/java/main/**
+            **/build/classes/java/main/**
+          if-no-files-found: ignore

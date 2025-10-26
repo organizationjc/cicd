@@ -1,33 +1,73 @@
 name: 3 - Snyk Scan
+
 on:
   workflow_call:
     inputs:
-      runs-on: { type: string, default: 'ubuntu-latest' }
-      build-system: { type: string, required: true }
-      severity-threshold: { type: string, default: "high" } # low|medium|high|critical
+      runs-on:
+        type: string
+        default: 'ubuntu-latest'
+      build-system:
+        type: string
+        required: true            # maven | gradle
+      java-version:
+        type: string
+        default: '17'
+      severity-threshold:
+        type: string
+        default: 'high'
+      use-docker-action:
+        type: boolean
+        default: true             # true = usa snyk/actions/maven-3-jdk-17
+      jdk-major:
+        type: string
+        default: '17'             # 11 o 17 para la imagen docker de Snyk
+      extra-args:
+        type: string
+        default: ''               # ej: --exclude=**/examples/** --org=mi-org
     secrets:
-      SNYK_TOKEN: { required: true }
+      SNYK_TOKEN:
+        required: true
+
 jobs:
   snyk:
     runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Java build tool cache (optional)
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: ${{ inputs.build-system }}
-      - name: Build (no tests)
-        run: |
-          if [ "${{ inputs.build-system }}" = "maven" ]; then mvn -B -ntp -DskipTests package;
-          else ./gradlew assemble; fi
-      - name: Snyk Open Source & Code
-        uses: snyk/actions/maven@master # o snyk/actions/gradle@master
+
+      # Ruta A: Docker action con JDK embebido
+      - name: Snyk (Maven + Docker action)
+        if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' }}
+        uses: snyk/actions/maven-3-jdk-${{ inputs.jdk-major }}@v3
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: test
-          args: >
+          args: >-
             --severity-threshold=${{ inputs.severity-threshold }}
             --all-projects
+            --print-deps
+            ${{ inputs.extra-args }}
+
+      # Ruta B: CLI nativa usando el JDK del runner
+      - name: Setup Java
+        if: ${{ !inputs.use-docker-action }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java-version }}
+          cache: ${{ inputs.build-system }}
+
+      - name: Snyk CLI setup
+        if: ${{ !inputs.use-docker-action }}
+        uses: snyk/actions/setup@v4
+
+      - name: Snyk test (CLI)
+        if: ${{ !inputs.use-docker-action }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk test \
+            --severity-threshold=${{ inputs.severity-threshold }} \
+            --all-projects \
+            --print-deps \
+            ${{ inputs.extra-args }}

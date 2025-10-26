@@ -162,10 +162,15 @@ jobs:
     uses: ./.github/workflows/3-sonarcloud.yml
     with:
       runs-on: ${{ inputs.runs-on }}
+      build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
       sonar-org: ${{ inputs.sonar-org }}
       sonar-project-key: ${{ inputs.sonar-project-key }}
+      use-binaries-artifact: true
+      # coverage-report-paths: '**/target/site/jacoco/*.xml,**/build/reports/jacoco/test/jacocoTestReport.xml'
+      # wait-for-quality-gate: true
     secrets: inherit
+
 
   snyk-scan:
     if: ${{ inputs.snyk-enabled }}
@@ -174,7 +179,10 @@ jobs:
     with:
       runs-on: ${{ inputs.runs-on }}
       build-system: ${{ inputs.build-system }}
+      java-version: ${{ inputs.java-version }}
       severity-threshold: ${{ inputs.snyk-severity-threshold }}
+      use-docker-action: true      # <-- evita JAVA_HOME en host
+      jdk-major: '17'
     secrets: inherit
 
   jfrog-xray:
