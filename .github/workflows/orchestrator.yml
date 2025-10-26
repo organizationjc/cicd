@@ -26,6 +26,7 @@ on:
       sonar-project-key: { type: string, default: '' }
       snyk-enabled: { type: boolean, default: true }
       snyk-severity-threshold: { type: string, default: 'high' }
+      snyk-slug: { type: string, default: '' }
       jfrog-enabled: { type: boolean, default: true }
       jfrog-server-url: { type: string, default: '' }
       jfrog-repo: { type: string, default: '' }
@@ -181,8 +182,9 @@ jobs:
       build-system: ${{ inputs.build-system }}
       java-version: ${{ inputs.java-version }}
       severity-threshold: ${{ inputs.snyk-severity-threshold }}
-      use-docker-action: true      # <-- evita JAVA_HOME en host
+      use-docker-action: true
       jdk-major: '17'
+      snyk-slug: ${{ inputs.snyk-slug }}
     secrets: inherit
 
   jfrog-xray:

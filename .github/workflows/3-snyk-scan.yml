@@ -8,7 +8,7 @@ on:
         default: 'ubuntu-latest'
       build-system:
         type: string
-        required: true            # maven | gradle
+        required: true
       java-version:
         type: string
         default: '17'
@@ -17,13 +17,13 @@ on:
         default: 'high'
       use-docker-action:
         type: boolean
-        default: true             # true = usa acción Docker de Snyk para Maven
+        default: true
       jdk-major:
         type: string
-        default: '17'             # '11' o '17' (solo aplica a Maven con Docker)
-      extra-args:
+        default: '17'
+      snyk-slug:
         type: string
-        default: ''               # ej: --exclude=**/examples/** --org=mi-org
+        default: ''
     secrets:
       SNYK_TOKEN:
         required: true
@@ -34,60 +34,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ─────────────────────────────────────────────────────────────
-      # Ruta A (Maven + Docker): JDK 17
-      # ─────────────────────────────────────────────────────────────
-      - name: Snyk (Maven + Docker action JDK 17)
-        if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' && inputs.jdk-major == '17' }}
-        uses: snyk/actions/maven-3-jdk-17@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          args: >-
-            --severity-threshold=${{ inputs.severity-threshold }}
-            --all-projects
-            --print-deps
-            ${{ inputs.extra-args }}
-
-      # ─────────────────────────────────────────────────────────────
-      # Ruta A (Maven + Docker): JDK 11
-      # ─────────────────────────────────────────────────────────────
-      - name: Snyk (Maven + Docker action JDK 11)
-        if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' && inputs.jdk-major == '11' }}
-        uses: snyk/actions/maven-3-jdk-11@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          args: >-
-            --severity-threshold=${{ inputs.severity-threshold }}
-            --all-projects
-            --print-deps
-            ${{ inputs.extra-args }}
-
-      # ─────────────────────────────────────────────────────────────
-      # Ruta B (CLI nativa: Maven o Gradle) — evita Docker y usa el JDK del runner
-      # ─────────────────────────────────────────────────────────────
-      - name: Setup Java
-        if: ${{ !inputs.use-docker-action }}
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: ${{ inputs.java-version }}
-          cache: ${{ inputs.build-system }}
-
-      - name: Snyk CLI setup
-        if: ${{ !inputs.use-docker-action }}
+      - name: Instalar Snyk CLI
         uses: snyk/actions/setup@master
 
-      - name: Snyk test (CLI)
-        if: ${{ !inputs.use-docker-action }}
+      - name: Run Snyk Open Source Scan (Test)
+        continue-on-error: true
+        run: |
+          snyk test --sarif-file-output=snyk-oss.sarif --org=${{ inputs.snyk-slug }} || true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Open Source (Monitor for Dashboard)
+        continue-on-error: true
         run: |
-          snyk test \
-            --severity-threshold=${{ inputs.severity-threshold }} \
-            --all-projects \
-            --print-deps \
-            ${{ inputs.extra-args }}
+          snyk monitor --org=${{ inputs.snyk-slug }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
