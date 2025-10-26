@@ -17,10 +17,10 @@ on:
         default: 'high'
       use-docker-action:
         type: boolean
-        default: true             # true = usa snyk/actions/maven-3-jdk-17
+        default: true             # true = usa acción Docker de Snyk para Maven
       jdk-major:
         type: string
-        default: '17'             # 11 o 17 para la imagen docker de Snyk
+        default: '17'             # '11' o '17' (solo aplica a Maven con Docker)
       extra-args:
         type: string
         default: ''               # ej: --exclude=**/examples/** --org=mi-org
@@ -34,10 +34,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Ruta A: Docker action con JDK embebido
-      - name: Snyk (Maven + Docker action)
-        if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' }}
-        uses: snyk/actions/maven-3-jdk-${{ inputs.jdk-major }}@v3
+      # ─────────────────────────────────────────────────────────────
+      # Ruta A (Maven + Docker): JDK 17
+      # ─────────────────────────────────────────────────────────────
+      - name: Snyk (Maven + Docker action JDK 17)
+        if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' && inputs.jdk-major == '17' }}
+        uses: snyk/actions/maven-3-jdk-17@v3
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -48,7 +50,25 @@ jobs:
             --print-deps
             ${{ inputs.extra-args }}
 
-      # Ruta B: CLI nativa usando el JDK del runner
+      # ─────────────────────────────────────────────────────────────
+      # Ruta A (Maven + Docker): JDK 11
+      # ─────────────────────────────────────────────────────────────
+      - name: Snyk (Maven + Docker action JDK 11)
+        if: ${{ inputs.use-docker-action && inputs.build-system == 'maven' && inputs.jdk-major == '11' }}
+        uses: snyk/actions/maven-3-jdk-11@v3
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: >-
+            --severity-threshold=${{ inputs.severity-threshold }}
+            --all-projects
+            --print-deps
+            ${{ inputs.extra-args }}
+
+      # ─────────────────────────────────────────────────────────────
+      # Ruta B (CLI nativa: Maven o Gradle) — evita Docker y usa el JDK del runner
+      # ─────────────────────────────────────────────────────────────
       - name: Setup Java
         if: ${{ !inputs.use-docker-action }}
         uses: actions/setup-java@v4
