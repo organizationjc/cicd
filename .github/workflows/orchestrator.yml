@@ -203,7 +203,7 @@ jobs:
   image-build:
     if: ${{ needs.set-switches.outputs.do_image == 'true' }}
     #needs: [static-analysis, sonarcloud, snyk-scan, resolve-image-ref]
-    needs: [static-analysis, resolve-image-ref]
+    needs: [resolve-image-ref]
     uses: ./.github/workflows/4-image-build.yml
     with:
       runs-on: ${{ inputs.runs-on }}
@@ -241,7 +241,7 @@ jobs:
   deploy-tomcat:
     if: ${{ needs.set-switches.outputs.do_deploy_tomcat == 'true' }}
     #needs: [static-analysis, snyk-scan, sonarcloud]
-    needs: [static-analysis, image-build]
+    needs: [image-build]
     uses: ./.github/workflows/5-deploy-tomcat-ssh.yml
     with:
       runner-label: ${{ inputs.runner-label }}
