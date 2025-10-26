@@ -245,7 +245,7 @@ jobs:
     uses: ./.github/workflows/5-deploy-tomcat-ssh.yml
     with:
       runs-on: ${{ inputs.runs-on }}
-      tomcat-artifact-name: myapp-war
+      tomcat-artifact-name: mi-app-tomcat-war
       tomcat-webapps-path: /opt/tomcat/webapps
       target-war-name: app.war
       tomcat-service-name: tomcat
