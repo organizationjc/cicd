@@ -42,7 +42,7 @@ jobs:
           path: ./artifact
 
       - name: 2. Setup SSH Key
-        uses: poc-pipeline/poc-template-cicd/.github/actions/setup-ssh-key@main
+        uses: organizationjc/cicd/.github/actions/setup-ssh-key@main
         with:
           ssh-private-key: ${{ secrets.TOMCAT_SSH_KEY }}
           key-filename: 'deploy_key.pem'
