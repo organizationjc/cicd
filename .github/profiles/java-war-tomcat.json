@@ -1,0 +1,48 @@
+{
+  "_comment": "Perfil para una aplicación WAR desplegada en Tomcat vía SSH.",
+  "profile_type": "java-war-tomcat",
+  "description": "Construye un WAR y lo despliega en un Tomcat existente vía SSH.",
+
+  "runs-on": "ubuntu-latest",
+  "build-system": "maven",
+  "java-version": "11",
+  "project-name": "mi-aplicacion-web",
+
+  "_comment_switches": "Este perfil no construye imágenes, solo despliega un WAR.",
+  "switches": {
+    "do_image": false,
+    "do_deploy_k8s": false,
+    "do_deploy_ocp": false,
+    "do_deploy_tomcat": true
+  },
+
+  "_comment_tools": "Configuración de seguridad para la aplicación WAR.",
+  "sonar": {
+    "enabled": false,
+
+    "org": "mi-organizacion-sonar",
+    "project-key": "mi-org_mi-aplicacion-web"
+  },
+  "snyk": {
+    "enabled": false,
+    "severity-threshold": "critical",
+    "slug": ""
+  },
+  "jfrog": {
+    "enabled": false
+  },
+  "security_scans": {
+    "run-owasp-depcheck": true,
+    "run-trivy": false, 
+    "run-sbom": false
+  },
+  
+  "_comment_deploy": "Parámetros específicos para el despliegue en Tomcat.",
+  "deployment": {
+    "tomcat-artifact-name": "mi-app-tomcat-war",
+    "tomcat-webapps-path": "/var/lib/tomcat9/webapps",
+    "target-war-name": "app.war",
+    "tomcat-service-name": "tomcat9",
+    "use_ssh_deploy": true
+  }
+}

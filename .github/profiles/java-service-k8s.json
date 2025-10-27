@@ -1,0 +1,53 @@
+{
+  "_comment": "Perfil para un servicio Java estándar desplegado en Kubernetes.",
+  "profile_type": "java-service-k8s",
+  "description": "Construye un JAR, lo empaqueta en una imagen Docker y lo despliega en K8s con Helm.",
+
+  "runs-on": "ubuntu-latest",
+  "build-system": "maven",
+  "java-version": "17",
+  "project-name": "mi-servicio-k8s",
+
+  "_comment_switches": "Estos booleanos reemplazan al job 'set-switches' y controlan el flujo.",
+  "switches": {
+    "do_image": true,
+    "do_deploy_k8s": true,
+    "do_deploy_ocp": false,
+    "do_deploy_tomcat": false
+  },
+
+  "_comment_tools": "Configuración centralizada para todas las herramientas de CI/Seguridad.",
+  "sonar": {
+    "enabled": true,
+    "org": "mi-organizacion-sonar",
+    "project-key": "mi-org_mi-servicio-k8s"
+  },
+  "snyk": {
+    "enabled": true,
+    "severity-threshold": "high",
+    "slug": ""
+  },
+  "jfrog": {
+    "enabled": false,
+    "server-url": "https://miorg.jfrog.io",
+    "repo": "maven-virtual",
+    "build-name": "java-ci-build"
+  },
+  "security_scans": {
+    "run-owasp-depcheck": true,
+    "run-trivy": true,
+    "run-sbom": true
+  },
+  
+  "_comment_deploy": "Parámetros específicos del despliegue en contenedores.",
+  "image": {
+    "image-name": "mi-servicio-k8s",
+    "dockerfile-path": "Dockerfile",
+    "registry-server": "ghcr.io",
+    "registry-namespace": "mi-organizacion"
+  },
+  "deployment": {
+    "k8s-namespace": "production",
+    "helm-chart-path": "./helm/mi-servicio"
+  }
+}

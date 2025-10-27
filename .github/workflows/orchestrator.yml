@@ -3,52 +3,16 @@ name: Orchestrator (Java CI/CD Pro)
 on:
   workflow_call:
     inputs:
-      pipeline_profile: { type: string, required: true }
-      build-system: { type: string, required: true }
-      java-version: { type: string, required: true, default: '17' }
-      project-name: { type: string, required: true }
-      runs-on: { type: string, default: 'ubuntu-latest' }
-      dockerfile-path: { type: string, default: 'Dockerfile' }
-      image-name: { type: string }
-      registry-server: { type: string, default: 'ghcr.io' }
-      registry-namespace: { type: string }
-      k8s-namespace: { type: string, default: 'default' }
-      helm-chart-path: { type: string }
-      tomcat-url: { type: string, default: '' }
-      tomcat-context: { type: string, default: '/' }
-      tomcat-artifact-name: { type: string, default: 'app.war' }
-      use_ssh_deploy: { type: boolean, default: false }
-      run-owasp-depcheck: { type: boolean, default: true }
-      run-trivy: { type: boolean, default: true }
-      run-sbom: { type: boolean, default: true }
-      sonar-enabled: { type: boolean, default: true }
-      sonar-org: { type: string,  default: '' }
-      sonar-project-key: { type: string, default: '' }
-      snyk-enabled: { type: boolean, default: true }
-      snyk-severity-threshold: { type: string, default: 'high' }
-      snyk-slug: { type: string, default: '' }
-      jfrog-enabled: { type: boolean, default: true }
-      jfrog-server-url: { type: string, default: '' }
-      jfrog-repo: { type: string, default: '' }
-      jfrog-build-name: { type: string, default: 'java-ci' }
-      jfrog-build-number: { type: string, default: '${{ github.run_number }}' }
-    secrets:
-      SONAR_TOKEN: { required: false }
-      SNYK_TOKEN: { required: false }
-      REGISTRY_USERNAME: { required: false }
-      REGISTRY_TOKEN: { required: false }
-      COSIGN_KEY: { required: false }
-      COSIGN_PASSWORD: { required: false }
-      KUBE_CONFIG: { required: false }
-      OPENSHIFT_TOKEN: { required: false }
-      OPENSHIFT_SERVER: { required: false }
-      TOMCAT_SSH_HOST: { required: false }
-      TOMCAT_SSH_USER: { required: false }
-      TOMCAT_SSH_KEY: { required: false }
-      JF_URL: { required: false }
-      JF_USER: { required: false }
-      JF_PASSWORD: { required: false }
-      JF_ACCESS_TOKEN: { required: false }
+      pipeline_profile:
+        type: string
+        required: true
+      extra-vars:
+        description: 'JSON string for overriding profile settings'
+        type: string
+        required: false
+        default: '{}'
+
+    secrets: inherit
 
 permissions:
   contents: read
@@ -68,65 +32,35 @@ defaults:
     shell: bash
 
 jobs:
-  validate-inputs:
-    runs-on: ${{ inputs.runs-on }}
-    steps:
-      - run: |
-          case "${{ inputs.build-system }}" in maven|gradle) ;; *) echo "build-system inválido"; exit 64;; esac
-          case "${{ inputs.pipeline_profile }}" in \
-            java-service-k8s|java-service-openshift|java-lib-release|java-service-dockerhub|java-service-ghcr|java-war-tomcat) ;; \
-            *) echo "pipeline_profile inválido"; exit 64;; esac
-
-  set-switches:
-    needs: validate-inputs
-    runs-on: ${{ inputs.runs-on }}
+  setup-config:
+    runs-on: ubuntu-latest
     outputs:
-      do_image: ${{ steps.sw.outputs.do_image }}
-      do_deploy_k8s: ${{ steps.sw.outputs.do_deploy_k8s }}
-      do_deploy_ocp: ${{ steps.sw.outputs.do_deploy_ocp }}
-      do_deploy_tomcat: ${{ steps.sw.outputs.do_deploy_tomcat }}
+      # ESTO SE QUEDA IGUAL. Define los outputs del JOB.
+      do_image: ${{ fromJson(steps.config.outputs.cfg_json).switches.do_image }}
+      java-version: ${{ fromJson(steps.config.outputs.cfg_json).java-version }}
+      sonar-project-key: ${{ fromJson(steps.config.outputs.cfg_json).sonar.project-key }}
+      runs-on: ${{ fromJson(steps.config.outputs.cfg_json).runs-on }}
+      build-system: ${{ fromJson(steps.config.outputs.cfg_json).build-system }}
+      java-version: ${{ fromJson(steps.config.outputs.cfg_json).java-version }}
+      project-name: ${{ fromJson(steps.config.outputs.cfg_json).project-name }}
+      # ... (etc)
+
     steps:
-      - id: sw
+      - uses: actions/checkout@v4
+      
+      - id: config
         run: |
-          case "${{ inputs.pipeline_profile }}" in
-            java-lib-release)
-              echo "do_image=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_k8s=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_ocp=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_tomcat=false" >> $GITHUB_OUTPUT
-              ;;
-            java-service-k8s|java-service-dockerhub|java-service-ghcr)
-              echo "do_image=true" >> $GITHUB_OUTPUT
-              echo "do_deploy_k8s=true" >> $GITHUB_OUTPUT
-              echo "do_deploy_ocp=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_tomcat=false" >> $GITHUB_OUTPUT
-              ;;
-            java-service-openshift)
-              echo "do_image=true" >> $GITHUB_OUTPUT
-              echo "do_deploy_k8s=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_ocp=true" >> $GITHUB_OUTPUT
-              echo "do_deploy_tomcat=false" >> $GITHUB_OUTPUT
-              ;;
-            java-war-tomcat)
-              echo "do_image=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_k8s=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_ocp=false" >> $GITHUB_OUTPUT
-              echo "do_deploy_tomcat=true" >> $GITHUB_OUTPUT
-              ;;
-          esac
-
-  resolve-image-ref:
-    needs: set-switches
-    runs-on: ${{ inputs.runs-on }}
-    outputs:
-      image-tag: ${{ steps.out.outputs.tag }}
-    steps:
-      - id: out
-        run: echo "tag=${{ env.IMAGE_BASENAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+          # 1. Ejecuta el script externo y captura su salida (stdout)
+          JSON_OUTPUT=$(bash .github/scripts/get-merged-config.sh \
+            "${{ inputs.pipeline_profile }}" \
+            '${{ inputs.extra-vars }}')
+          
+          # 2. Pasa esa salida al GITHUB_OUTPUT para que los 'outputs' del job funcionen
+          echo "cfg_json=$JSON_OUTPUT" >> $GITHUB_OUTPUT
 
   # ---------- Jobs que llaman reusables (SOLO 'uses' + 'with') ----------
   build:
-    needs: resolve-image-ref
+    needs: setup-config
     uses: ./.github/workflows/1-build-java.yml
     with:
       runs-on: ${{ inputs.runs-on }}
