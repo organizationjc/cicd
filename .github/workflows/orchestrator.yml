@@ -49,6 +49,13 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.ref }}
           path: .reusable-workflow-src
+
+      - name: Diagnóstico de rutas
+        run: |
+          echo "PWD: $PWD"
+          ls -la
+          ls -la .github || true
+          ls -la .reusable-workflow-src/.github/scripts || true
       
       - id: config
         run: |
