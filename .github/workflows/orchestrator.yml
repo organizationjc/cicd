@@ -10,7 +10,7 @@ on:
         description: 'JSON string for overriding profile settings'
         type: string
         required: false
-        default: '{}'
+        default: "{}"
 
 permissions:
   contents: read
