@@ -12,8 +12,6 @@ on:
         required: false
         default: '{}'
 
-    secrets: inherit
-
 permissions:
   contents: read
   id-token: write
@@ -41,7 +39,6 @@ jobs:
       sonar-project-key: ${{ fromJson(steps.config.outputs.cfg_json).sonar.project-key }}
       runs-on: ${{ fromJson(steps.config.outputs.cfg_json).runs-on }}
       build-system: ${{ fromJson(steps.config.outputs.cfg_json).build-system }}
-      java-version: ${{ fromJson(steps.config.outputs.cfg_json).java-version }}
       project-name: ${{ fromJson(steps.config.outputs.cfg_json).project-name }}
       # ... (etc)
 
