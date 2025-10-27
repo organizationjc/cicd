@@ -43,24 +43,27 @@ jobs:
       # ... (etc)
 
     steps:
-      - name: Checkout Repository (for script)
+      - name: Checkout CI/CD platform repo
         uses: actions/checkout@v4
         with:
+          repository: organizationjc/cicd        # <-- TU REPO DE CI/CD
+          ref: v1                            # <-- pin a tag/branch
+          path: cicd-src                     # <-- carpeta destino
           fetch-depth: 1
+          # Si el repo está en otra org o es privado y el GITHUB_TOKEN no alcanza:
+          # token: ${{ secrets.CI_PLATFORM_TOKEN }}
 
-      - name: Diagnóstico rápido
+      - name: Diagnóstico
         run: |
           echo "PWD: $PWD"
-          ls -la || true
-          ls -la .github || true
-          ls -la .reusable-workflow-src || true
-          ls -la .reusable-workflow-src/.github || true
-          ls -la .reusable-workflow-src/scripts || true
+          ls -la
+          ls -la cicd-src || true
+          ls -la cicd-src/.github/scripts || true
       
       - id: config
         run: |
           # 1. Ejecuta el script externo y captura su salida (stdout)
-          JSON_OUTPUT=$(bash .github/scripts/get-merged-config.sh \
+          JSON_OUTPUT=$(bash cicd-src/.github/scripts/get-merged-config.sh \
             "${{ inputs.pipeline_profile }}" \
             '${{ inputs.extra-vars }}')
           
