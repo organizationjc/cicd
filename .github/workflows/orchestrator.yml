@@ -246,9 +246,9 @@ jobs:
     with:
       runs-on: ${{ inputs.runs-on }}
       tomcat-artifact-name: mi-app-tomcat-war
-      tomcat-webapps-path: /opt/tomcat/webapps
-      target-war-name: app.war
-      tomcat-service-name: tomcat
+      tomcat-webapps-path: /var/lib/tomcat9/webapps   # <— CAMBIA AQUÍ
+      target-war-name: app.war                         # o ROOT.war si quieres desplegar en /
+      tomcat-service-name: tomcat9                     # <— CAMBIA AQUÍ
     secrets:
       # Mapping: <child_secret> : <secret_received_by_orchestrator>
       TOMCAT_SSH_HOST: ${{ secrets.TOMCAT_SSH_HOST }}

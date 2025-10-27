@@ -9,7 +9,7 @@ inputs:
   key-filename:
     description: 'The local filename for the key'
     required: false
-    default: 'private_key.pem'
+    default: 'deploy_key.pem'
 
 runs:
   using: "composite"
