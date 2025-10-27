@@ -46,7 +46,7 @@ jobs:
       - name: Checkout Repository (for script)
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository
+          repository: ${{ github.repository }}
       
       - id: config
         run: |
