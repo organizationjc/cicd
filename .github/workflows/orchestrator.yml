@@ -46,21 +46,21 @@ jobs:
       - name: Checkout Repository (for script)
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.ref }}
-          path: .reusable-workflow-src
+          fetch-depth: 1
 
-      - name: Diagnóstico de rutas
+      - name: Diagnóstico rápido
         run: |
           echo "PWD: $PWD"
-          ls -la
+          ls -la || true
           ls -la .github || true
-          ls -la .reusable-workflow-src/.github/scripts || true
+          ls -la .reusable-workflow-src || true
+          ls -la .reusable-workflow-src/.github || true
+          ls -la .reusable-workflow-src/scripts || true
       
       - id: config
         run: |
           # 1. Ejecuta el script externo y captura su salida (stdout)
-          JSON_OUTPUT=$(bash .reusable-workflow-src/.github/scripts/get-merged-config.sh \
+          JSON_OUTPUT=$(bash .github/scripts/get-merged-config.sh \
             "${{ inputs.pipeline_profile }}" \
             '${{ inputs.extra-vars }}')
           
