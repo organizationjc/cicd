@@ -66,7 +66,7 @@ jobs:
           # 1. Ejecuta el script externo y captura su salida (stdout)
           JSON_OUTPUT=$(bash cicd-src/.github/scripts/get-merged-config.sh \
             "${{ inputs.pipeline_profile }}" \
-            '${{ inputs.extra-vars }}')
+            "${{ inputs.extra-vars }}")
           
           # 2. Pasa esa salida al GITHUB_OUTPUT para que los 'outputs' del job funcionen
           echo "cfg_json=$JSON_OUTPUT" >> $GITHUB_OUTPUT
