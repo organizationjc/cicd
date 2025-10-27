@@ -43,7 +43,8 @@ jobs:
       # ... (etc)
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository (for script)
+        uses: actions/checkout@v4
         repository: ${{ github.repository }}
       
       - id: config
