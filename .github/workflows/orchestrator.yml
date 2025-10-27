@@ -76,10 +76,10 @@ jobs:
     needs: setup-config
     uses: ./.github/workflows/1-build-java.yml
     with:
-      runs-on: ${{ inputs.runs-on }}
-      build-system: ${{ inputs.build-system }}
-      java-version: ${{ inputs.java-version }}
-      project-name: ${{ inputs.project-name }}
+      runs-on: ${{ needs.setup-config.outputs.runs-on }}
+      build-system: ${{ needs.setup-config.outputs.build-system }}
+      java-version: ${{ needs.setup-config.outputs.java-version }}
+      project-name: ${{ needs.setup-config.outputs.project-name }}
 
   unit-tests:
     needs: build
