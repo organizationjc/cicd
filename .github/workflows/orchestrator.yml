@@ -44,11 +44,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        repository: ${{ github.repository }}
       
       - id: config
         run: |
           # 1. Ejecuta el script externo y captura su salida (stdout)
-          JSON_OUTPUT=$(bash organizationjc/cicd/.github/scripts/get-merged-config.sh \
+          JSON_OUTPUT=$(bash .github/scripts/get-merged-config.sh \
             "${{ inputs.pipeline_profile }}" \
             '${{ inputs.extra-vars }}')
           
