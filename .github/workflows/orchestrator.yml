@@ -47,9 +47,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: organizationjc/cicd        # <-- TU REPO DE CI/CD
-          ref: v1                            # <-- pin a tag/branch
+          ref: main                         # <-- pin a tag/branch
           path: cicd-src                     # <-- carpeta destino
           fetch-depth: 1
+          token: ${{ secrets.CI_PLATFORM_TOKEN }}
           # Si el repo está en otra org o es privado y el GITHUB_TOKEN no alcanza:
           # token: ${{ secrets.CI_PLATFORM_TOKEN }}
 
