@@ -30,14 +30,7 @@ jobs:
       war-file: ${{ steps.detect.outputs.war-name }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Reusable inputs (debug)
-        run: |
-          echo "runs-on=${{ inputs.runs-on }}"
-          echo "build-system=${{ inputs.build-system }}"
-          echo "java-version=${{ inputs.java-version }}"
-          echo "project-name=${{ inputs.project-name }}"
-          
+       
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
