@@ -5,7 +5,7 @@
 
   "runs-on": "ubuntu-latest",
   "build-system": "maven",
-  "java-version": "11",
+  "java-version": "17",
   "project-name": "mi-aplicacion-web",
 
   "_comment_switches": "Este perfil no construye imágenes, solo despliega un WAR.",
